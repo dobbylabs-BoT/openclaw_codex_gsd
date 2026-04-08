@@ -1333,6 +1333,31 @@ If a GSD turn keeps producing commentary without artifact creation, blocker evid
 
 ### B18. Progress evidence rule for long GSD turns
 When waiting on a long GSD turn, the agent must evaluate progress by material evidence, not by token stream volume.
+### B19. Deferred output rule for Codex App Server skills
+During Codex App Server execution, a GSD skill should process silently by default and avoid incremental commentary.
+
+It must emit intermediate text only if:
+- a real blocker appears
+- a human decision is required
+- immediate clarification is strictly required by the workflow
+
+Otherwise, it must continue processing and emit only one of these useful outputs:
+- final result
+- blocker
+- decision request
+
+The agent must prefer silent processing plus final useful output over streaming descriptive narration.
+
+### B20. Commentary minimization rule for patched GSD skills
+When GSD skills are patched for Codex App Server operation, the patch must bias them toward:
+- silent processing
+- final useful output only
+- no repeated read narration
+- no intention narration
+- no descriptive preambles unless required
+
+This is mandatory for efficient token usage during app-server operation.
+
 
 Valid evidence of progress includes:
 - expected files created
