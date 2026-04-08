@@ -158,11 +158,33 @@ codex app-server --help
 ### PASS result
 The technical base may continue deploying.
 
+### Dependency completion rule
+If a required base dependency is missing during Scope A, and:
+- the dependency has a clear local installation path
+- the corrective action is deterministic
+- no additional human decision is required
+
+then the agent must:
+1. install or restore the missing dependency
+2. re-run the affected verification checks
+3. only then close the phase as `PASS` or `BLOCKED`
+
+The agent must not stop early with `BLOCKED` if the only missing step is a straightforward local installation already implied by consuming the base.
+
+This applies especially to:
+- Codex CLI missing
+- `codex app-server` unavailable only because Codex CLI is missing
+- wrapper missing
+- bootstrap missing
+- required base directories missing
+
 ### BLOCKED result
-The agent must:
-- stop
-- report evidence
-- propose exactly one next step
+The agent must stop only if:
+- installation fails
+- authentication fails and requires human action
+- the runtime remains unavailable after installation
+- a permission or environment error prevents continuation
+- the next corrective step is not deterministic
 
 ---
 
