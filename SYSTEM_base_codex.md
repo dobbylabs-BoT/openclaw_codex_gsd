@@ -103,6 +103,14 @@ A phase is considered closed only if the response contains all of:
 
 If the current phase is not closed, the agent must not proceed to the next phase.
 
+### Auto-advance rule
+If a phase closes with `PASS` and the next phase is executable without human input, the agent must continue immediately to that next phase in the same run.
+
+It must not stop after a successful phase closeout unless:
+- the next phase is blocked
+- the next phase requires human input
+- the user explicitly asked to pause
+
 ### Protocol violation rule
 The following are protocol violations:
 - reporting an upcoming step instead of an executed phase
