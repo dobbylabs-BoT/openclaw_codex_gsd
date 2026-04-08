@@ -937,6 +937,28 @@ The following must not be considered sufficient validation:
 
 When the project operates in pure GSD mode, the agent must use this call pattern:
 
+### Effective runtime configuration rule
+The agent must not assume that `.codex/config.toml` is active only because the file exists on disk.
+
+Before running write-capable GSD workflows, the agent must verify the effective runtime configuration returned by the real `codex app-server` session.
+
+It must verify at least:
+- effective approval policy
+- effective sandbox mode
+- effective working directory
+- effective write capability for the project
+- whether the project is trusted or project config is being ignored
+
+If the effective runtime configuration does not match the required baseline for the intended workflow, the agent must correct it before continuing.
+
+This includes, when needed:
+- marking the project as trusted so project config is actually applied
+- correcting effective sandbox mode to `workspace-write`
+- correcting effective approval policy to the required baseline
+- re-running the runtime verification after the correction
+
+A write-capable GSD workflow must not start until this effective runtime verification passes.
+
 ### Per-connection handshake
 1. `initialize`
 2. `initialized`
