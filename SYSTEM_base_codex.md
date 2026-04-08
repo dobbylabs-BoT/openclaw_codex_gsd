@@ -1,151 +1,138 @@
-# SYSTEM_base_codex_gsd
+# SYSTEM_base_codex
 
-## Propósito
+## 1. Purpose
 
-Este archivo define un sistema base común para OpenClaw + Codex con soporte opcional de GSD por proyecto.
+This file defines a common base for:
 
-El sistema se consume una sola vez para dejar una base general preparada. Después, el bot debe poder reutilizar esa base para cualquier desarrollo futuro.
+- OpenClaw as the runtime, channel, and overall coordination layer
+- Codex as the real execution engine
+- `codex app-server` as the automation bridge
+- GSD as the structured workflow layer per project when its use is confirmed
 
-Este archivo combina cuatro objetivos:
+This file is not a project plan. 
+It is an operational base that is meant to be consumed in order to:
 
-1. verificar y estabilizar la base de OpenClaw
-2. verificar Codex y el canal seguro
-3. desplegar un wrapper de soporte reusable
-4. permitir que cualquier proyecto nuevo o existente se inicialice después, con o sin GSD, según confirmación humana
+- deploy the technical solution correctly
+- prepare the shared environment
+- deploy the support wrapper and reusable bootstrap
+- establish a stable way to initialize projects
+- define how work must be executed when a project uses GSD
 
-## Principios operativos
+---
 
-El sistema debe seguir estos principios:
+## 2. When the agent must read this SYSTEM
 
-- OpenClaw es runtime, canal, scheduler y coordinación general
-- Codex es el componente real de ejecución
-- GSD, si se usa, debe ser el workflow real del proyecto
-- el wrapper `gsd-codex` es solo capa de soporte
-- el repositorio es la fuente principal de verdad técnica
-- el chat no es la memoria principal
-- toda fase debe terminar en PASS, BLOCKED o NEEDS_CONFIRMATION
-- no se pasa a la siguiente fase sin reportar resultado con evidencia
-- no se continúa silenciosamente después de un fallo bloqueante
-- no se instala GSD globalmente en el host como modo por defecto
-- no se emulan fases de GSD con prompts del wrapper
-- cuando un proyecto use GSD, los archivos del bootstrap y los artefactos GSD deben usarse de forma complementaria, no duplicada
+The agent must read this file in these cases:
 
-## Precondiciones humanas
+### Mandatory reading
+- when deploying the base for the first time
+- when starting in a new environment
+- when initializing a new project
+- when changing a project's mode
+- when repairing the OpenClaw ↔ Codex bridge
+- when re-validating the pure GSD gate
 
-Antes de entregar este archivo a la máquina, un humano debe haber completado:
+### Not required before every minor step
+Once a project is already initialized and stable, the agent must not re-read this SYSTEM before every minor action.
 
-- instalación de OpenClaw
-- onboarding básico de OpenClaw
-- autenticación del proveedor
-- validación de al menos un canal seguro
-- acceso al entorno de trabajo
-- colocación de secretos, tokens y credenciales que sean sensibles
+During normal operation it should work mainly from:
 
-La máquina puede verificar estas condiciones, pero no debe fingir que están resueltas si no lo están.
+1. `AGENTS.md`
+2. `STATUS.md`
+3. `HANDOFF.md`
+4. `BLOCKERS.md`
 
-## Modo de consumo
+The SYSTEM becomes the primary source again only if:
+- the base must be reconfigured
+- there is a technical bridge issue
+- the pure GSD gate must be re-validated
+- there is uncertainty about execution rules
 
-Este archivo gobierna dos ámbitos distintos:
+---
 
-### Ámbito A: despliegue de base común
-Se ejecuta una sola vez para preparar el sistema compartido.
+## 3. Separation of scopes
 
-### Ámbito B: inicialización de proyectos
-Se ejecuta cada vez que el usuario quiera empezar un proyecto nuevo o trabajar sobre uno existente.
+This system has two clearly separate scopes:
 
-El sistema debe completar primero el ámbito A.
-Solo después puede entrar en el ámbito B.
+### Scope A: Base solution deployment
+This runs once per environment in order to leave the shared base correctly installed.
 
-# ---------------------------------------------------------------------------
-# ÁMBITO A: DESPLIEGUE DE BASE COMÚN
-# ---------------------------------------------------------------------------
+### Scope B: Project execution
+This runs whenever the user wants to work on a specific project.
 
-## Fase A1: verificación de salud base
+The agent must complete Scope A first. 
+Only then may it execute Scope B.
 
-La máquina debe ejecutar en este orden:
+---
+
+# SCOPE A. BASE SOLUTION DEPLOYMENT
+
+## A0. General rule
+
+This scope does not build product features. 
+It only makes the base platform operational so that projects can later be executed correctly.
+
+If a phase in this scope fails, the agent must stop and must not continue to the next phase.
+
+The report for each phase must use this format:
+
+```md
+Phase:
+- name:
+- target:
+- action:
+- evidence:
+- result:
+- next step:
+```
+
+---
+
+## A1. Environment health verification
+
+The agent must verify:
+
+- OpenClaw is reachable
+- the gateway is healthy
+- at least one secure channel is functioning
+- Node is available
+- npm is available
+- git is available
+- Codex CLI is available
+- `codex app-server` is available
+- Codex login is valid
+
+### Minimum recommended sequence
 
 ```bash
 openclaw doctor
 openclaw status --deep
 openclaw gateway status
-```
 
-También debe ejecutar el probe del canal principal ya configurado.
-
-### Criterio PASS
-
-Todo esto es cierto:
-
-- OpenClaw es alcanzable
-- el gateway está sano
-- el canal seguro principal está sano
-- no hay un error bloqueante que impida trabajo posterior
-
-### Criterio BLOCKED
-
-Si falla cualquiera de los chequeos requeridos:
-
-- detenerse inmediatamente
-- no pasar a A2
-- reportar la evidencia
-- proponer exactamente un siguiente paso
-
-### Formato de reporte de fase
-
-Phase:
-- name: A1 base health verification
-- target: global base
-- action:
-- evidence:
-- result:
-- next step:
-
-## Fase A2: verificación de tooling base
-
-La máquina debe ejecutar en este orden:
-
-```bash
 node --version
 npm --version
 git --version
 codex --help
-```
-
-Si `codex` no existe y la política local permite instalarlo, puede ejecutar:
-
-```bash
-npm install -g @openai/codex
-```
-
-Después debe ejecutar:
-
-```bash
-codex --help
 codex login status
+codex app-server --help
 ```
 
-### Criterio PASS
+### PASS result
+The technical base may continue deploying.
 
-Todo esto es cierto:
+### BLOCKED result
+The agent must:
+- stop
+- report evidence
+- propose exactly one next step
 
-- Node está disponible
-- npm está disponible
-- git está disponible
-- Codex CLI está instalado
-- Codex login es válido
+---
 
-### Criterio BLOCKED
+## A2. Reusable global structure
 
-Si Codex falta o no está autenticado:
+The agent must ensure a reusable structure for the base.
 
-- detenerse
-- no pasar a A3
-- informar si falta instalación o autenticación
-- no declarar la base lista
-
-## Fase A3: estructura global reusable
-
-La máquina debe asegurar la existencia de estas rutas:
+At minimum, an equivalent structure must exist for:
 
 ```bash
 mkdir -p ~/bin
@@ -157,19 +144,20 @@ mkdir -p ~/.openclaw/workspace/templates/gsd-codex
 mkdir -p ~/.openclaw/workspace/templates/gsd-codex/bootstrap
 ```
 
-No debe borrar contenido existente.
+It must not delete existing content.
 
-### Criterio PASS
+---
 
-Todas las rutas existen.
+## A3. Support wrapper
 
-## Fase A4: despliegue del wrapper `gsd-codex`
+The agent must deploy a stable support wrapper named `gsd-codex`.
 
-Esta fase es obligatoria. El wrapper forma parte del despliegue base común.
+### Stable path
+- `~/bin/gsd-codex`
 
-### Función del wrapper
+### Allowed responsibilities
 
-El wrapper `gsd-codex` queda definido como capa de soporte para:
+The wrapper's role is limited to:
 
 - `doctor`
 - `status`
@@ -181,105 +169,1063 @@ El wrapper `gsd-codex` queda definido como capa de soporte para:
 - `logs`
 - `where`
 
-No debe hacer como flujo principal:
+### Critical rule
+The wrapper is not the GSD workflow. 
+The wrapper cannot declare pure GSD by itself.
 
-- `map`
-- `phase`
-- `execute`
-- `verify`
-- `resume`
+It may only declare:
 
-Porque esas fases deben venir del workflow real de GSD.
+- local GSD installed
+- repo prepared
+- skills present
+- backend present
 
-### Ruta estable esperada
+It may not declare:
 
-Ruta recomendada:
+- skill executed
+- real GSD flow active
+- GSD phase completed
 
-- `~/bin/gsd-codex`
+### Wrapper code
 
-## Operación normal con y sin GSD
+The wrapper must be deployed as this baseline implementation or an explicitly versioned and validated equivalent implementation that preserves the same operational contract.
+Write the following file to `~/bin/gsd-codex` and make it executable:
 
-Sin GSD:
-- `AGENTS.md`, `STATUS.md`, `HANDOFF.md` y `BLOCKERS.md` son la memoria operativa principal del proyecto
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-Con GSD:
-- el workflow real y los artefactos propios de GSD son la fuente principal para planificación, fases, estado detallado, resúmenes y reentrada profunda
-- la máquina debe usar las skills y el flujo real de GSD, no recrear manualmente sus fases por fuera del sistema
-- el orden esperado es usar primero el flujo real de GSD como `map-codebase`, `new-project`, `plan-phase`, `execute-phase`, `verify-work` y transiciones equivalentes cuando apliquen
-- `AGENTS.md` debe contener reglas estables del proyecto
-- `STATUS.md` debe contener estado ejecutivo corto
-- `HANDOFF.md` debe contener punto de reentrada rápida
-- `BLOCKERS.md` debe contener bloqueos reales visibles
-- la máquina no debe duplicar pesadamente la misma información en los archivos del bootstrap y en los artefactos GSD
+SELF_PATH="${BASH_SOURCE[0]}"
+SELF_DIR="$(cd "$(dirname "$SELF_PATH")" && pwd)"
 
-# ---------------------------------------------------------------------------
-# ÁMBITO B: INICIALIZACIÓN DE CUALQUIER PROYECTO FUTURO
-# ---------------------------------------------------------------------------
+CODex_CONFIG_CONTENT='model = "gpt-5.4"
+model_reasoning_effort = "high"
+approval_policy = "never"
+sandbox_mode = "workspace-write"
 
-## Regla de activación del ámbito B
+[sandbox_workspace_write]
+network_access = true
+'
 
-Cada vez que el usuario diga algo equivalente a:
+usage() {
+ cat <<'EOF'
+Usage:
+ gsd-codex doctor
+ gsd-codex where
+ gsd-codex status [project_path]
+ gsd-codex bootstrap <project_path> [--force] [--backup]
+ gsd-codex install-local <project_path>
+ gsd-codex gsd-check <project_path>
+ gsd-codex codex [args...]
+ gsd-codex exec <project_path> <command...>
+ gsd-codex logs [project_path]
+EOF
+}
 
-- quiero hacer una app X
-- tengo esta necesidad
-- vamos a crear un proyecto nuevo
-- quiero trabajar sobre este repo
-- prepara este directorio para desarrollo
+need_cmd() {
+ local cmd="$1"
+ if ! command -v "$cmd" >/dev/null 2>&1; then
+ echo "MISSING: $cmd"
+ return 1
+ fi
+}
 
-la máquina debe entrar en el protocolo de inicialización de proyecto.
+abs_path() {
+ local target="$1"
+ if [[ -d "$target" ]]; then
+ (cd "$target" && pwd)
+ else
+ local dir
+ dir="$(cd "$(dirname "$target")" && pwd)"
+ echo "$dir/$(basename "$target")"
+ fi
+}
 
-## Fase B1: identificar objetivo real
+ensure_file() {
+ local path="$1"
+ local content="$2"
+ local force="$3"
+ local backup="$4"
 
-La máquina debe determinar si el usuario se refiere a:
+ mkdir -p "$(dirname "$path")"
 
-- un repositorio existente
-- un directorio existente que debe inicializarse
-- un proyecto nuevo que todavía necesita ruta
-- una necesidad todavía demasiado abstracta para crear el proyecto
+ if [[ -f "$path" && "$force" != "1" ]]; then
+ echo "SKIP existing: $path"
+ return 0
+ fi
 
-Si falta información mínima, debe pedir solo lo imprescindible:
+ if [[ -f "$path" && "$force" == "1" && "$backup" == "1" ]]; then
+ cp "$path" "$path.bak"
+ echo "BACKUP created: $path.bak"
+ fi
 
-- ruta del repo
-- ruta del proyecto
-- confirmación para crear un nuevo directorio
+ printf "%s" "$content" > "$path"
+ echo "WROTE: $path"
+}
 
-No debe inventar una ruta.
+doctor_cmd() {
+ local rc=0
 
-## Fase B2: confirmar si el proyecto usará GSD
+ echo "== gsd-codex doctor =="
 
-La máquina debe preguntar explícitamente:
+ for cmd in bash node npm git codex; do
+ if command -v "$cmd" >/dev/null 2>&1; then
+ echo "OK: $cmd -> $(command -v "$cmd")"
+ else
+ echo "MISSING: $cmd"
+ rc=1
+ fi
+ done
 
-¿Quieres que este proyecto se inicialice con workflow estructurado de GSD?
+ if codex app-server --help >/dev/null 2>&1; then
+ echo "OK: codex app-server"
+ else
+ echo "MISSING: codex app-server"
+ rc=1
+ fi
 
-Respuestas válidas:
+ if command -v openclaw >/dev/null 2>&1; then
+ echo "OK: openclaw -> $(command -v openclaw)"
+ else
+ echo "WARN: openclaw not found in PATH"
+ fi
 
-- sí
-- no
-- no está claro
+ return "$rc"
+}
 
-Si no está claro, detenerse y esperar.
+where_cmd() {
+ echo "wrapper_path=$SELF_PATH"
+ echo "wrapper_dir=$SELF_DIR"
+ echo "pwd=$(pwd)"
+ echo "path=$PATH"
+}
 
-### Si la respuesta es sí
+status_cmd() {
+ local project="${1:-.}"
+ project="$(abs_path "$project")"
 
-La máquina debe:
+ echo "== gsd-codex status =="
+ echo "project=$project"
 
-- preparar el proyecto
-- crear artefactos vivos
-- escribir `.codex/config.toml`
-- instalar GSD local
-- verificar GSD local
-- dejar el proyecto listo para workflow estructurado
+ if [[ -d "$project/.git" ]]; then
+ echo "git_repo=yes"
+ else
+ echo "git_repo=no"
+ fi
 
-### Si la respuesta es no
+ if [[ -d "$project/.codex" ]]; then
+ echo ".codex=yes"
+ else
+ echo ".codex=no"
+ fi
 
-La máquina debe:
+ if [[ -f "$project/.codex/config.toml" ]]; then
+ echo "codex_config=yes"
+ else
+ echo "codex_config=no"
+ fi
 
-- preparar el proyecto
-- crear artefactos vivos
-- escribir `.codex/config.toml`
-- no instalar GSD
-- dejar el proyecto listo para trabajo con Codex sin GSD
+ if compgen -G "$project/.codex/skills/*/SKILL.md" >/dev/null; then
+ echo "skills=yes"
+ find "$project/.codex/skills" -maxdepth 2 -name SKILL.md | sort
+ else
+ echo "skills=no"
+ fi
 
-## Objetivo final
+ for f in AGENTS.md STATUS.md HANDOFF.md BLOCKERS.md; do
+ if [[ -f "$project/$f" ]]; then
+ echo "$f=yes"
+ else
+ echo "$f=no"
+ fi
+ done
+}
 
-El objetivo de este sistema es dejar una base común de OpenClaw + Codex consumida una sola vez, con wrapper y bootstrap reusable embebidos, de modo que después el bot pueda preparar cualquier proyecto futuro, preguntar si debe usar GSD, desplegar automáticamente todo lo necesario y trabajar sin quedarse en un limbo silencioso.
+bootstrap_cmd() {
+ if [[ $# -lt 1 ]]; then
+ usage
+ exit 1
+ fi
+
+ local project="$1"
+ shift || true
+
+ local force=0
+ local backup=0
+
+ while [[ $# -gt 0 ]]; do
+ case "$1" in
+ --force) force=1 ;;
+ --backup) backup=1 ;;
+ *) echo "Unknown flag: $1"; exit 1 ;;
+ esac
+ shift
+ done
+
+ project="$(abs_path "$project")"
+ mkdir -p "$project/.codex"
+
+ ensure_file "$project/AGENTS.md" "# AGENTS
+
+Objective:
+Work on this project through small, verifiable, safe changes.
+
+Rules:
+- Use the repository as the primary source of truth.
+- Read README, docs, STATUS.md, HANDOFF.md and BLOCKERS.md before changing code.
+- Update STATUS.md and HANDOFF.md when a subphase is completed.
+- Record real blockers in BLOCKERS.md.
+- If this project uses GSD, use GSD as the real workflow.
+" "$force" "$backup"
+
+ ensure_file "$project/STATUS.md" "# STATUS
+
+Project:
+System active: base_codex
+Workflow mode:
+Phase:
+Subphase:
+Current goal:
+Last real change:
+Last validation:
+Current state:
+Next step:
+Open risks:
+" "$force" "$backup"
+
+ ensure_file "$project/HANDOFF.md" "# HANDOFF
+
+Last completed block:
+Immediate pending:
+Read first to resume:
+Useful commands:
+Notes:
+" "$force" "$backup"
+
+ ensure_file "$project/BLOCKERS.md" "# BLOCKERS
+
+## Active
+
+- [ ] No real blocker documented yet
+
+## Resolved
+" "$force" "$backup"
+
+ ensure_file "$project/.codex/config.toml" "$CODex_CONFIG_CONTENT" "$force" "$backup"
+}
+
+install_local_cmd() {
+ if [[ $# -lt 1 ]]; then
+ usage
+ exit 1
+ fi
+
+ local project
+ project="$(abs_path "$1")"
+
+ need_cmd node
+ need_cmd npm
+
+ cd "$project"
+ npx get-shit-done-cc@latest --codex --local
+}
+
+gsd_check_cmd() {
+ if [[ $# -lt 1 ]]; then
+ usage
+ exit 1
+ fi
+
+ local project
+ project="$(abs_path "$1")"
+
+ echo "== gsd-codex gsd-check =="
+ echo "project=$project"
+
+ [[ -d "$project/.codex" ]] || { echo "FAIL: missing .codex"; exit 1; }
+
+ if compgen -G "$project/.codex/skills/*/SKILL.md" >/dev/null; then
+ echo "OK: skills found"
+ find "$project/.codex/skills" -maxdepth 2 -name SKILL.md | sort
+ else
+ echo "FAIL: no skills found under .codex/skills"
+ exit 1
+ fi
+
+ if [[ -f "$project/.codex/config.toml" ]]; then
+ echo "OK: codex config present"
+ else
+ echo "FAIL: missing .codex/config.toml"
+ exit 1
+ fi
+}
+
+codex_cmd() {
+ exec codex "$@"
+}
+
+exec_cmd() {
+ if [[ $# -lt 2 ]]; then
+ usage
+ exit 1
+ fi
+
+ local project
+ project="$(abs_path "$1")"
+ shift
+
+ cd "$project"
+ "$@"
+}
+
+logs_cmd() {
+ local project="${1:-.}"
+ project="$(abs_path "$project")"
+
+ echo "== gsd-codex logs =="
+ echo "project=$project"
+
+ find "$project" -maxdepth 2 \( -name "*.log" -o -name "STATUS.md" -o -name "HANDOFF.md" -o -name "BLOCKERS.md" \) | sort
+}
+
+main() {
+ if [[ $# -lt 1 ]]; then
+ usage
+ exit 1
+ fi
+
+ local cmd="$1"
+ shift || true
+
+ case "$cmd" in
+ doctor) doctor_cmd "$@" ;;
+ where) where_cmd "$@" ;;
+ status) status_cmd "$@" ;;
+ bootstrap) bootstrap_cmd "$@" ;;
+ install-local) install_local_cmd "$@" ;;
+ gsd-check) gsd_check_cmd "$@" ;;
+ codex) codex_cmd "$@" ;;
+ exec) exec_cmd "$@" ;;
+ logs) logs_cmd "$@" ;;
+ -h|--help|help) usage ;;
+ *) echo "Unknown command: $cmd"; usage; exit 1 ;;
+ esac
+}
+
+main "$@"
+```
+
+### Deployment of the wrapper
+
+The agent must deploy it with a concrete sequence such as:
+
+```bash
+cat > ~/bin/gsd-codex <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+# ...full wrapper content exactly as defined above...
+EOF
+
+chmod +x ~/bin/gsd-codex
+```
+
+### Minimum wrapper validation
+
+The agent must leave the wrapper operational and validate at least:
+
+```bash
+gsd-codex where
+gsd-codex doctor
+```
+
+### PASS result
+- the wrapper exists
+- it is executable
+- it is in `PATH`
+- `where` works
+- `doctor` works
+
+---
+
+## A4. Reusable bootstrap
+
+The agent must deploy a reusable bootstrap that creates or preserves:
+
+- `AGENTS.md`
+- `STATUS.md`
+- `HANDOFF.md`
+- `BLOCKERS.md`
+- `.codex/config.toml`
+
+It must support:
+
+- create if missing
+- no overwrite by default
+- `--force`
+- `--backup`
+- `--backup --force`
+
+### Bootstrap rules
+- if the file does not exist, create it
+- if it exists and there is no `--force`, preserve it
+- if `--backup --force` is used, create a backup before overwriting
+- do not delete useful content without a backup
+
+### Minimum bootstrap validation
+The agent must test the bootstrap in:
+- a case with no files
+- a case with existing files
+- a case with backup and overwrite
+
+---
+
+## A5. Minimum valid Codex configuration
+
+When creating `.codex/config.toml`, the agent must write exactly this minimum valid configuration:
+
+```toml
+model = "gpt-5.4"
+model_reasoning_effort = "high"
+approval_policy = "never"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+network_access = true
+```
+
+It must not invent other sections as the default baseline unless the project requires them.
+
+---
+
+## A6. Codex automation bridge
+
+The agent must validate the correct bridge:
+
+- `codex app-server`
+- `stdio` transport
+- JSON-RPC flow
+- capability for:
+ - `initialize`
+ - `initialized`
+ - `thread/start`
+ - `thread/resume`
+ - `turn/start`
+
+### Critical rule
+The Codex TUI must not be used as an automation path.
+
+The TUI must not be treated as an API. 
+Bash, `gsd-tools.cjs`, and the wrapper must not be used as a substitute for the real Codex runtime.
+
+### Connection rule
+For each `stdio` connection to `codex app-server`, the agent must:
+
+1. send `initialize`
+2. send `initialized`
+3. not repeat `initialize` on that same connection
+
+---
+
+## A7. Base deployment closeout
+
+The agent must close this scope by reporting:
+
+- system health
+- channel health
+- Codex
+- `codex app-server`
+- wrapper
+- bootstrap
+- shared paths
+- blockers
+- next step
+
+Only after this is the base considered correctly consumed.
+
+---
+
+# SCOPE B. PROJECT EXECUTION
+
+## B0. General rule
+
+This scope performs actual project work.
+
+There are two possible modes here:
+
+- `codex_without_gsd`
+- `codex_gsd_pure`
+
+The agent must not mix modes without declaring the change.
+
+---
+
+## B1. Project activation
+
+When the user says something like:
+
+- I want to build app X
+- I want to work on this repo
+- prepare this project
+- I want to start a new development project
+
+the agent must enter this scope.
+
+---
+
+## B2. Target identification
+
+The agent must determine whether the target is:
+
+- an existing repo
+- an existing directory to initialize
+- a new project that needs a path
+
+If minimum information is missing, it must ask only for what is necessary.
+
+It must not invent paths.
+
+### Minimum target verification
+
+```bash
+pwd
+ls -la
+git rev-parse --is-inside-work-tree
+```
+
+---
+
+## B3. Confirm whether GSD is required
+
+The agent must explicitly ask whether this project should use the GSD workflow.
+
+### If the answer is no
+It must leave the project in:
+
+- `codex_without_gsd`
+
+### If the answer is yes
+It must prepare the project and pass through the pure GSD gate.
+
+---
+
+## B4. Project initialization
+
+The agent must apply the safe bootstrap to the project and ensure:
+
+- `AGENTS.md`
+- `STATUS.md`
+- `HANDOFF.md`
+- `BLOCKERS.md`
+- `.codex/config.toml`
+
+### Minimum recommended content for live files
+
+#### `AGENTS.md`
+
+```md
+# AGENTS
+
+Objective:
+Work on this project through small, verifiable, safe changes.
+
+Rules:
+- Use the repository as the primary source of truth.
+- Read README, docs, STATUS.md, HANDOFF.md and BLOCKERS.md before changing code.
+- Update STATUS.md and HANDOFF.md when a subphase is completed.
+- Record real blockers in BLOCKERS.md.
+- If this project uses GSD, use GSD as the real workflow.
+```
+
+#### `STATUS.md`
+
+```md
+# STATUS
+
+Project:
+System active: base_codex
+Workflow mode:
+Phase:
+Subphase:
+Current goal:
+Last real change:
+Last validation:
+Current state:
+Next step:
+Open risks:
+```
+
+#### `HANDOFF.md`
+
+```md
+# HANDOFF
+
+Last completed block:
+Immediate pending:
+Read first to resume:
+Useful commands:
+Notes:
+```
+
+#### `BLOCKERS.md`
+
+```md
+# BLOCKERS
+
+## Active
+
+- [ ] No real blocker documented yet
+
+## Resolved
+```
+
+---
+
+## B5. Normal GSD installation for Codex
+
+If the project uses GSD, the agent must install GSD locally using its normal Codex installation inside the project.
+
+### Normal local installation
+
+```bash
+cd /path/to/repo
+npx get-shit-done-cc@latest --codex --local
+```
+
+### Minimum installation validation
+
+The agent must check:
+
+- presence of `.codex/`
+- presence of installed GSD skills
+- presence of the backend or local resources left by the installer
+
+Example verification:
+
+```bash
+find .codex -maxdepth 3 -type f | sort
+find .codex/skills -maxdepth 2 -name SKILL.md | sort
+```
+
+### PASS result
+- local GSD is installed
+- skills are present
+- the project is ready to attempt the pure GSD gate
+
+### BLOCKED result
+- if local installation fails
+- if the skills do not appear
+- if the backend or required resources are missing
+
+In that case:
+- stop
+- record the blocker
+- do not declare the project ready for GSD
+
+---
+
+## B6. Pure GSD gate
+
+To declare a project as:
+
+- `codex_gsd_pure`
+
+the agent must demonstrate all of the following:
+
+1. it uses `codex app-server`
+2. it uses `stdio`
+3. it correctly completes:
+ - `initialize`
+ - `initialized`
+ - `thread/start` or `thread/resume`
+ - `turn/start`
+4. it invokes a GSD skill explicitly in the turn text with a pattern such as:
+ - `$gsd-help`
+ - `$gsd-map-codebase`
+ - `$gsd-new-project`
+ - or another valid GSD skill for that point in the workflow
+5. the turn reaches terminal state
+6. there is a useful response attributable to the skill
+
+### Initial validation rule
+The first practical bridge validation may use a simple read-only skill, for example:
+
+- `$gsd-help`
+
+but that skill is not fixed as the only route in the system. 
+It is only used as an initial proof that the bridge and turn consumption work correctly.
+
+### Critical rule
+The following must not be considered sufficient validation:
+
+- typing into the Codex TUI
+- using shell
+- using `gsd-tools.cjs`
+- using the wrapper as a substitute
+- passing only a `type: "skill"` item as the sole input without a functional textual `$gsd-...` invocation
+
+---
+
+## B7. Bridge calling and response consumption rule
+
+When the project operates in pure GSD mode, the agent must use this call pattern:
+
+### Per-connection handshake
+1. `initialize`
+2. `initialized`
+
+### Thread management
+3. `thread/start` for the first turn of the project or a new line of work
+4. `thread/resume` for normal continuity of the same thread
+5. `thread/fork` only if a separate work branch is needed
+
+### Turn execution
+6. `turn/start`
+
+The actual work call happens in `turn/start`.
+
+### Invocation format
+The valid way to invoke a GSD skill is through explicit text inside the turn, for example:
+
+```json
+[
+ {
+ "type": "text",
+ "text": "$gsd-help"
+ }
+]
+```
+
+or, depending on the current point in the workflow:
+
+```json
+[
+ {
+ "type": "text",
+ "text": "$gsd-new-project"
+ }
+]
+```
+
+```json
+[
+ {
+ "type": "text",
+ "text": "$gsd-map-codebase"
+ }
+]
+```
+
+Explicit textual invocation is the operational reference for the system.
+
+---
+
+## B8. Turn waiting rule in `codex app-server`
+
+In the OpenClaw ↔ Codex App Server integration, a turn is not considered finished at the first agent message.
+
+The only valid turn completion is:
+
+- `turn/completed`
+
+### Events to listen for
+During the turn, the agent must accumulate and process events such as:
+
+- `turn/started`
+- `item/started`
+- `item/agentMessage/delta`
+- `item/completed`
+- `turn/completed`
+
+### Accumulation rule
+While the turn remains open, the agent must accumulate:
+
+- all `item/agentMessage/delta`
+- and, if present, the final content of `item/completed` with `type = "agentMessage"`
+
+### What it must not do
+The agent must not consider the turn finished in any of these cases:
+
+- the first agent text
+- an initial preamble
+- the first user `item/completed`
+- the first assistant `item/completed` if the turn is still open
+
+### What it must do
+The agent must:
+
+1. keep the client open
+2. listen until `turn/completed`
+3. consider the turn complete only then
+4. use the accumulated text up to that point as the final useful response
+
+---
+
+## B9. Context and continuity rule
+
+It is important to manage context so that degradation does not occur.
+
+### Thread rule
+Each project must have thread continuity.
+
+The agent must:
+- save the project's operational `threadId`
+- reuse `thread/resume` as the normal continuity path
+- avoid opening new threads unnecessarily
+- use `thread/start` only for real start points
+- use `thread/fork` only when intentionally separating a work branch
+
+### Minimum sufficient context rule
+The agent must not resend the entire historical project context on every turn.
+
+It must rely on:
+
+- thread continuity
+- `AGENTS.md`
+- `STATUS.md`
+- `HANDOFF.md`
+- `BLOCKERS.md`
+
+### No-degradation rule
+If the thread starts accumulating too much noise or long low-value responses, the agent must:
+
+1. consolidate the real state into `STATUS.md`
+2. consolidate the short re-entry point into `HANDOFF.md`
+3. keep live blockers in `BLOCKERS.md`
+4. continue using those artifacts as the operational anchor
+
+The agent must not compensate for context degradation by sending massive text dumps in each new turn.
+
+---
+
+## B10. GSD response interpretation rule
+
+A final useful response from a GSD skill may fall into one of these groups:
+
+### Type A. Executable next step for the agent
+Examples:
+- continue with a subsequent skill
+- map the codebase
+- initialize a project
+- execute a specific phase
+- verify a specific phase
+
+In this case, the agent must:
+1. record the result
+2. execute the next valid step
+3. keep `STATUS.md` updated
+4. keep `HANDOFF.md` updated
+
+### Type B. Question or request resolvable by the agent
+Examples:
+- information already present in `AGENTS.md`
+- information already present in `STATUS.md`
+- project context available in the repo or live artifacts
+- objective answers derivable from the current target
+
+In this case, the agent must:
+1. resolve the question on its own
+2. launch the next required turn
+3. not escalate to the user if the answer is already recoverable with confidence
+
+### Type C. Question or request not resolvable by the agent
+Examples:
+- business decision
+- human preference
+- priority among options
+- external data not present in the project or live artifacts
+- explicit confirmation required by the workflow
+
+In this case, the agent must:
+1. stop the affected phase
+2. escalate immediately to the user
+3. communicate the exact question or a brief faithful reformulation
+4. include minimal context and sufficient evidence
+5. not invent the answer
+6. not continue until a valid answer is received
+
+### Type D. Technical or functional blocker
+Examples:
+- skill with no useful response
+- reproducible error
+- broken bridge
+- missing dependency
+- internal flow contradiction
+- no valid next step available
+
+In this case, the operational blocker rule applies.
+
+---
+
+## B11. Execution rule in `codex_gsd_pure`
+
+When the project is in pure GSD mode, the agent must work like this:
+
+1. invoke the appropriate GSD skill through `codex app-server`
+2. use explicit `$gsd-...` text
+3. wait for terminal result
+4. extract the useful response
+5. classify the response as:
+ - executable next step
+ - question resolvable by the agent
+ - question not resolvable by the agent
+ - blocker
+6. act according to that classification
+7. update:
+ - `STATUS.md`
+ - `HANDOFF.md`
+ - `BLOCKERS.md` if needed
+
+### Critical rule
+It must not:
+- reinterpret the workflow on its own outside the GSD response
+- replace the skill with shell
+- manually recreate map/plan/execute
+- use the TUI for automation
+- invent answers to questions asked by GSD that the agent cannot resolve confidently
+
+---
+
+## B12. Execution rule in `codex_without_gsd`
+
+When the project is in non-GSD mode, the agent must:
+
+- work with Codex without GSD skills
+- maintain real validation
+- maintain state and handoff
+- maintain blocker discipline
+
+This must be made explicit in `STATUS.md`:
+
+```md
+Workflow mode: codex_without_gsd
+```
+
+---
+
+## B13. Which files govern normal operation
+
+Once the base is deployed and the project is initialized, the agent must operate by reading, in this order:
+
+1. `AGENTS.md`
+2. `STATUS.md`
+3. `HANDOFF.md`
+4. `BLOCKERS.md`
+
+The SYSTEM must not be the primary source for every daily micro-decision. 
+The SYSTEM governs:
+
+- deployment
+- initialization
+- mode changes
+- bridge repair
+- framework rules
+
+The project files govern:
+
+- daily execution
+- current state
+- next step
+- re-entry
+- concrete blockers
+
+---
+
+## B14. Operational blocker rule
+
+Whenever any real blocker appears, technical or functional, the agent must:
+
+1. detect it and record it in `BLOCKERS.md`
+2. communicate it immediately to the user with brief evidence
+3. stop only the affected phase
+4. not remain silent even if time passes
+5. not retry indefinitely without communicating
+6. not continue inventing steps outside the validated flow
+
+A real blocker includes, among others:
+- environment failure
+- bridge failure
+- skill with no useful response
+- missing dependency
+- reproducible error
+- requirements contradiction
+- pending human decision
+- absence of a valid next step
+
+Mandatory format:
+
+```md
+Blocker:
+- blocker detected:
+- phase affected:
+- evidence:
+- what was tried:
+- what is needed:
+- next step if unblocked:
+```
+
+---
+
+## B15. Executed communication rule
+
+The agent must not communicate intention as a substitute for execution.
+
+It may only communicate one of these:
+
+1. an already executed action with evidence
+2. an already detected real blocker with evidence
+3. a human decision required to continue
+4. an already completed phase closeout
+
+It must not announce:
+- what it is going to do
+- what it plans to try
+- unexecuted working hypotheses
+- empty progress
+- review promises without evidence
+
+Every communication must correspond to work already performed or a blocker already verified.
+
+---
+
+## B16. No progress simulation rule
+
+The agent must not use intermediate messages to simulate activity.
+
+If there is no:
+- executed action
+- new evidence
+- real blocker
+- or required human decision
+
+then it must not send an update.
+
+---
+
+## 4. Stop conditions
+
+The agent must stop if any of these occurs:
+
+- there is no valid target
+- Codex authentication is missing
+- `codex app-server` is unavailable
+- the wrapper is not operational
+- the bootstrap is not operational
+- the project cannot be initialized safely
+- local GSD installation fails
+- the pure GSD gate fails
+- the next step cannot be determined safely
+
+---
+
+## 5. Final objective
+
+The objective of this system is to:
+
+- deploy a reusable base correctly
+- clearly separate deployment from execution
+- allow projects to be initialized consistently
+- execute pure GSD only when it is actually validated through `codex app-server`
+- prevent the agent from improvising or pretending a GSD workflow
+- enable stable autonomous operation with well-defined project artifacts
+
+When a project requires GSD, the system must enforce pure GSD through `codex app-server`, with explicit `$gsd-...` invocation, waiting until `turn/completed`, correct consumption of the final response, thread continuity, and immediate escalation to the user of any question or decision the agent cannot resolve on its own.
