@@ -1269,6 +1269,42 @@ then it must not send an update.
 
 ---
 
+### B17. Useful completion rule for long GSD turns
+For long-running GSD turns through `codex app-server`, commentary is not considered useful completion by itself.
+
+If a skill invocation is expected to create or update concrete artifacts, the turn must end in one of these states only:
+- artifacts created or updated, with evidence
+- explicit blocker, with evidence
+- explicit human decision required by the workflow
+
+The agent must not treat commentary-only output, preambles, or descriptive progress text as a successful outcome.
+
+If a GSD turn keeps producing commentary without artifact creation, blocker evidence, or decision need, the agent must:
+1. treat the turn as degraded
+2. interrupt or abandon that attempt after reasonable evidence of non-progress
+3. report the degraded turn as a blocker or failed attempt
+4. retry only with a stricter invocation or a corrected workflow assumption
+
+### B18. Progress evidence rule for long GSD turns
+When waiting on a long GSD turn, the agent must evaluate progress by material evidence, not by token stream volume.
+
+Valid evidence of progress includes:
+- expected files created
+- expected files modified
+- subagent completions
+- required workflow state transitions
+- a final useful response approaching terminal completion
+
+Invalid evidence of progress includes:
+- repeated commentary
+- repeated restatement of intent
+- repeated reading narration
+- long descriptive text without artifact change
+
+If material progress does not appear within a reasonable interval, the agent must stop waiting silently and surface the issue.
+
+---
+
 ## 4. Stop conditions
 
 The agent must stop if any of these occurs:
