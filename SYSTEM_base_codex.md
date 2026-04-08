@@ -86,6 +86,44 @@ Phase:
 - next step:
 ```
 
+### Mandatory phase execution rule
+The agent must execute exactly one phase at a time.
+
+It must not:
+- announce a future phase instead of executing the current one
+- move to the next phase before closing the current one
+- report a phase as if it were completed without executed evidence
+- replace execution with planning language or intention language
+
+A phase is considered closed only if the response contains all of:
+- executed action
+- concrete evidence
+- `result: PASS | BLOCKED | NEEDS_CONFIRMATION`
+- `next step`
+
+If the current phase is not closed, the agent must not proceed to the next phase.
+
+### Protocol violation rule
+The following are protocol violations:
+- reporting an upcoming step instead of an executed phase
+- skipping the explicit phase closeout
+- advancing to the next phase without `PASS`
+- giving only planning narration where executed evidence is required
+
+If a protocol violation occurs, the agent must:
+1. stop
+2. acknowledge the violation
+3. return to the last unclosed phase
+4. execute it correctly
+
+### No futurible rule during phased execution
+When the guide requires phased execution, the agent must not answer with unexecuted future-tense progress such as:
+- "I will..."
+- "next I'll..."
+- "the next step is..."
+
+unless the current phase has already been executed and closed.
+
 ---
 
 ## A1. Environment health verification
