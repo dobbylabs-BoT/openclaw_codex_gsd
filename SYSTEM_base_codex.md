@@ -859,6 +859,30 @@ cd /path/to/repo
 npx get-shit-done-cc@latest --codex --local
 ```
 
+### Mandatory post-install Codex App Server patch
+After every local GSD installation for Codex, the agent must apply a deterministic post-install patch to the installed skills so they behave efficiently under `codex app-server`.
+
+This patch is mandatory, not optional. It must be applied every time GSD is installed or reinstalled locally, because a fresh installer run may overwrite previous skill modifications.
+
+The patch must enforce these runtime constraints across installed GSD skills:
+- minimize commentary
+- do not narrate repeated reads or intent
+- prefer material progress over narration
+- if the workflow is expected to create or update artifacts, it must end with artifacts, blocker, or decision request
+- if no material progress appears after a reasonable attempt, stop with blocker
+- if the invocation already resolves a branch, do not ask again
+
+The operational contract is:
+1. install GSD locally
+2. apply the Codex App Server skill patch script
+3. verify the patched skills exist
+4. only then declare the project ready for the pure GSD gate
+
+The baseline script path for this patch is:
+- `~/.openclaw/workspace/templates/gsd-codex/patch-codex-skills.sh`
+
+This script must be integrated into the normal installation path so the patch is reapplied automatically after each local GSD install.
+
 ### Minimum installation validation
 
 The agent must check:
